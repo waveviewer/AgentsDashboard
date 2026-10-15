@@ -1,0 +1,31 @@
+# Caddy reverse proxy for Agents Dashboard — automatic HTTPS.
+#
+# Caddy obtains and renews TLS certificates from Let's Encrypt automatically.
+# The Next.js app binds to localhost; only Caddy is exposed to the internet.
+#
+# Usage:
+#   1. Point your domain's DNS A/AAAA record at this host.
+#   2. Replace dash.example.com with your domain.
+#   3. Run the app:   pnpm start -p 3000   (or via a systemd service / PM2)
+#   4. Run Caddy:     caddy run --config ./Caddyfile
+
+dash.example.com {
+	# Forward all traffic to the local Next.js server.
+	reverse_proxy localhost:3000
+
+	# Pass the real client IP through (useful for logs / future rate limiting).
+	header_up X-Real-IP {remote_host}
+
+	# Cap request bodies at the proxy as defence-in-depth; the ingestion route
+	# also enforces its own INGEST_MAX_BODY_BYTES limit.
+	request_body {
+		max_size 64KB
+	}
+
+	encode gzip zstd
+
+	log {
+		output file /var/log/caddy/agents-dashboard.log
+		format json
+	}
+}
